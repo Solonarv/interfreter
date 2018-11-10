@@ -1,61 +1,33 @@
-module Interfreter.Impl.Haskell where
+module Interfreter.Impl.Haskell (Haskell(..)) where
 
 import Control.Applicative
 import Data.Semigroup
 
 import Interfreter.Types
 import Interfreter.Util.Process
+import Interfreter.Util.Impl
 
 data Haskell
   = Haskell
-    { cfg     :: !HaskellCfg
+    { cmd     :: !String
     , infoStr :: !String
     , handles :: !Handles
     }
 
-data HaskellCfg
-  = StackGhci
-    { hs_packages :: ![String]
-    , hs_resolver :: !(Maybe String)
-    , hs_args     :: ![String]
-    }
-  | CustomGhci
-    { hs_exe  :: !FilePath
-    , hs_args :: ![String]
-    }
-
-instance Semigroup HaskellCfg where
-  frst@StackGhci{} <> scnd@StackGhci{}
-    = StackGhci
-      { hs_packages = hs_packages frst <> hs_packages scnd
-      , hs_resolver = hs_resolver scnd <|> hs_resolver frst -- right bias!
-      , hs_args     = hs_args frst <> hs_args scnd  
-      }
-  _ <> x@StackGhci{} = x
-  _ <> x@CustomGhci{} = x
-  stimes = stimesIdempotentMonoid
-
-instance Monoid HaskellCfg where
-  mempty = StackGhci [] Nothing []
-
-instance Interpreter HaskellCfg Haskell where
+instance Interpreter Haskell where
   interpreterLangs _ = ["hs", "haskell"]
   interpreterInfo = infoStr
 
-  createInterpreter cfg = do
-    let (cmd, args) = case cfg of
-          StackGhci{hs_packages, hs_resolver, hs_args} -> 
-            ("stack",
-              ["ghci"]
-              ++ maybe [] (\r -> ["--resolver", r]) hs_resolver
-              ++ concatMap (\p -> ["--package", p]) hs_packages
-              ++ hs_args)
-          CustomGhci{hs_exe, hs_args} -> (hs_exe, hs_args)
-        infoStr = unwords $ show cmd : args
-    handles <- backendProc cmd args
-    -- TODO: clean spam, implement other methods
-    pure Haskell{cfg, infoStr, handles}
+  createInterpreter cmd = do
+    handles@Handles{handlesStdout, handlesStdin} <- backendShell cmd
+    _            <- readTill handlesStdout "GHCi, version "
+    Just version <- readTill handlesStdout ":"             
+    let infoStr = "ghci --version " <> version
+    hPutStrLn handlesStdin ":set prompt-function \\_ _ -> pure \"\""
+    hPutStrLn handlesStdin "putStrLn \"0e587hw047gh0s87zr0gtwgn-er8nepr89y59\""
+    _ <- readTill handlesStdout "0e587hw047gh0s87zr0gtwgn-er8nepr89y59"
+    pure Haskell{cmd, infoStr, handles}
   
   freeInterpreter = cleanupHandles . handles
 
-  runInterpreterOn _ _ _ = pure (Left "not implemented")
+  runInterpreterOn = defaultRunInterpreterOn handles

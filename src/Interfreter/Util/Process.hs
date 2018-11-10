@@ -1,5 +1,6 @@
 module Interfreter.Util.Process where
 
+import Data.List
 import System.IO
 import System.Process
 
@@ -20,5 +21,21 @@ cpHandles cp = do
 cleanupHandles :: Handles -> IO ()
 cleanupHandles (Handles i o e p) = cleanupProcess (Just i, Just o, Just e, p)
 
-backendProc :: FilePath -> [String] -> IO Handles
-backendProc fp str = cpHandles (proc fp str)
+backendShell :: String -> IO Handles
+backendShell cmd = cpHandles (shell cmd)
+
+readTill :: Handle -> String -> IO (Maybe String)
+readTill hdl sem = go ""
+  where
+    rsem = reverse sem
+    slen = length rsem
+    go acc =
+      if rsem `isPrefixOf` acc
+        then pure (Just (reverse $ drop slen acc))
+        else do
+          eof <- hIsEOF hdl
+          if eof
+            then pure Nothing
+            else do
+              c <- hGetChar hdl
+              go (c : acc)

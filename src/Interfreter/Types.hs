@@ -1,13 +1,12 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Interfreter.Types where
 
-import Data.Kind (Type)
+import Data.Proxy
 
 -- | The class of interpreter contexts. An interpreter context
 -- represents a connection to some REPL; this class provides
 -- uniform methods for creating, freeing, and using them.
---
--- Note: the @"Monoid"@ instance for @cfg@ should be right-biased.
-class (Monoid cfg) => Interpreter cfg i | i -> cfg, cfg -> i where
+class Interpreter i where
   -- | The list of languages this interpreter can handle.
   -- This should be a list of strings of the form @["hs", "haskell"]@ for
   -- e.g. a Haskell interpreter.
@@ -21,7 +20,7 @@ class (Monoid cfg) => Interpreter cfg i | i -> cfg, cfg -> i where
   -- | Create an interpreter context. Commonly, this method
   -- might create a background process according to the
   -- configuration, and store the process' handle in @i@.
-  createInterpreter :: cfg -> IO i
+  createInterpreter :: String -> IO i
   
   -- | Free any resources held by an interpreter context.
   -- Once freed, the interpreter context will no longer be usable.
@@ -34,3 +33,6 @@ class (Monoid cfg) => Interpreter cfg i | i -> cfg, cfg -> i where
                    -> String -- ^ language identifier
                    -> String -- ^ code fragment
                    -> IO (Either String String)
+
+interpreterLangs' :: forall i. Interpreter i => [String]
+interpreterLangs' = interpreterLangs (Proxy @i)
