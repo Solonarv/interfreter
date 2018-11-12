@@ -1,14 +1,16 @@
-module Interfreter.Multiple where
+module Interfreter.Multiple (Interpreters(..)) where
 
 import Interfreter.Types
 
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Text.Parsec hiding (many)
 
 import Control.Applicative
 import Data.Foldable
 import Data.Char
 import Data.Kind
+import Data.List
 import Data.Proxy
 
 data Interpreters :: [Type] -> Type where
@@ -65,4 +67,20 @@ instance (Interpreter i, CreateInterpreters is) => CreateInterpreters (i ': is) 
       Just ip  -> ip :|| is
 
 parseInterpretersCfg :: String -> Map String String
-parseInterpretersCfg = error "TODO"
+parseInterpretersCfg = fold . parse parseCfg ""
+
+type Parser = Parsec String ()
+
+parseCfg :: Parser (Map String String)
+parseCfg = fold <$> many parseCfgFragment <* spaces <* eof
+
+parseCfgFragment :: Parser (Map String String)
+parseCfgFragment = do
+  langs <- word `sepBy1` char ','
+  open  <- many1 (char '{')
+  let close = try (string ('}' <$ open))
+  cmd <- dropWhileEnd isSpace . dropWhile isSpace <$> some anyToken <* close
+  pure $ Map.fromList [(l, cmd) | l <- langs]
+
+word :: Parser String
+word = some alphaNum

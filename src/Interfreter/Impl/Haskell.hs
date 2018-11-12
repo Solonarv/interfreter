@@ -9,7 +9,7 @@ import Interfreter.Util.Impl
 
 data Haskell
   = Haskell
-    { cmd     :: !String
+    { cmd     :: !FilePath
     , infoStr :: !String
     , handles :: !Handles
     }
@@ -23,7 +23,7 @@ instance Interpreter Haskell where
     _            <- readTill handlesStdout "GHCi, version "
     Just version <- readTill handlesStdout ":"             
     let infoStr = "ghci --version " <> version
-    hPutStrLn handlesStdin ":set prompt-function \\_ _ -> pure \"\""
+    hPutStrLn handlesStdin ":set prompt \"\""
     hPutStrLn handlesStdin "putStrLn \"0e587hw047gh0s87zr0gtwgn-er8nepr89y59\""
     _ <- readTill handlesStdout "0e587hw047gh0s87zr0gtwgn-er8nepr89y59"
     pure Haskell{cmd, infoStr, handles}

@@ -2,6 +2,8 @@ module Interfreter.Util.Impl where
 
 import Interfreter.Util.Process
 
+import System.IO
+
 -- | A reasonable default definition for @'Interfreter.Types.runInterpreterOn'@.
 -- Suitable for interpreters that are a bundle of pipes connected to a
 -- REPL process running in the background.
