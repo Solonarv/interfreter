@@ -4,7 +4,7 @@ module Interfreter.Types where
 import Data.Kind
 import Data.Proxy
 
-import Interfreter.Util.SymbolList
+import Interfreter.Util.TypeLevel
 
 -- | The class of interpreter contexts. An interpreter context
 -- represents a connection to some REPL; this class provides
