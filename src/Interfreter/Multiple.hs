@@ -8,10 +8,6 @@ import Data.Kind
 import Data.List
 import Data.Proxy
 
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
-import Text.Parsec hiding (many)
-
 import Interfreter.Types
 import Interfreter.Util.SymbolList
 
