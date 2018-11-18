@@ -1,10 +1,5 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Interfreter.Multiple (Interpreters(..)) where
-
-import Interfreter.Types
-
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
-import Text.Parsec hiding (many)
 
 import Control.Applicative
 import Data.Foldable
@@ -13,25 +8,42 @@ import Data.Kind
 import Data.List
 import Data.Proxy
 
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
+import Text.Parsec hiding (many)
+
+import Interfreter.Types
+import Interfreter.Util.SymbolList
+
 data Interpreters :: [Type] -> Type where
   Silent :: Interpreters '[]
   (:--)  :: () -> !(Interpreters is) -> Interpreters (i ': is)
   (:||)  :: !i -> !(Interpreters is) -> Interpreters (i ': is)
 
+data MultiConfig :: [Type] -> Type where
+
 instance Interpreter (Interpreters '[]) where
-  interpreterLangs _ = []
+  type Langs (Interpreters '[]) = '[]
+  type Config (Interpreters '[]) = MultiConfig '[]
   interpreterInfo s = ""
-  createInterpreter = createInterpretersViaCfg
+  createInterpreter = error "TODO"
   freeInterpreter _ = pure ()
   runInterpreterOn _ lang _ = pure (Right "")
 
-instance (Interpreter i, Interpreter (Interpreters is), CreateInterpreters is) => Interpreter (Interpreters (i ': is)) where
-  interpreterLangs _ = interpreterLangs' @i <> interpreterLangs' @(Interpreters is)
+instance
+  (Interpreter i
+  , Interpreter (Interpreters is)
+  , KnownSymbolList (Langs i ++ Langs (Interpreters is))
+  ) => Interpreter (Interpreters (i ': is)) where
+  type Langs (Interpreters (i ': is)) =
+    Langs i ++ Langs (Interpreters is)
+  
+  type Config (Interpreters (i ': is)) = MultiConfig (i ': is)
 
   interpreterInfo (_ :-- is) = interpreterInfo is
   interpreterInfo (i :|| is) = unlines $ lines (interpreterInfo i) <> lines (interpreterInfo is)
 
-  createInterpreter = createInterpretersViaCfg
+  createInterpreter = error "TODO"
 
   freeInterpreter (_ :-- is) = freeInterpreter is
   freeInterpreter (i :|| is) = freeInterpreter i >> freeInterpreter is
@@ -46,41 +58,3 @@ instance (Interpreter i, Interpreter (Interpreters is), CreateInterpreters is) =
           Left{} -> pure err
           r      -> pure r
     else runInterpreterOn is lang code
-
-createInterpretersViaCfg :: CreateInterpreters is => String -> IO (Interpreters is)
-createInterpretersViaCfg = createInterpreters . parseInterpretersCfg
-
-class CreateInterpreters (is :: [Type]) where
-  createInterpreters :: Map String String -> IO (Interpreters is)
-
-instance CreateInterpreters '[] where
-  createInterpreters m = pure Silent
-
-instance (Interpreter i, CreateInterpreters is) => CreateInterpreters (i ': is) where
-  createInterpreters m = do
-    let ilangs = interpreterLangs' @i
-    let icfg = asum $ (`Map.lookup` m) <$> ilangs
-    i  <- traverse createInterpreter icfg
-    is <- createInterpreters @is m
-    pure $ case i of
-      Nothing  -> () :-- is
-      Just ip  -> ip :|| is
-
-parseInterpretersCfg :: String -> Map String String
-parseInterpretersCfg = fold . parse parseCfg ""
-
-type Parser = Parsec String ()
-
-parseCfg :: Parser (Map String String)
-parseCfg = fold <$> many parseCfgFragment <* spaces <* eof
-
-parseCfgFragment :: Parser (Map String String)
-parseCfgFragment = do
-  langs <- word `sepBy1` char ','
-  open  <- many1 (char '{')
-  let close = try (string ('}' <$ open))
-  cmd <- dropWhileEnd isSpace . dropWhile isSpace <$> some anyToken <* close
-  pure $ Map.fromList [(l, cmd) | l <- langs]
-
-word :: Parser String
-word = some alphaNum

@@ -1,16 +1,25 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Interfreter.Types where
 
+import Data.Kind
 import Data.Proxy
+
+import Interfreter.Util.SymbolList
 
 -- | The class of interpreter contexts. An interpreter context
 -- represents a connection to some REPL; this class provides
 -- uniform methods for creating, freeing, and using them.
-class Interpreter i where
+class (KnownSymbolList (Langs i)) => Interpreter i where
+
+  -- | The type of configuration this interpreter needs.
+  -- This might include e.g. a path to the REPL binary,
+  -- or a set of packages to bring into scope.
+  type Config i :: Type
+
   -- | The list of languages this interpreter can handle.
   -- This should be a list of strings of the form @["hs", "haskell"]@ for
   -- e.g. a Haskell interpreter.
-  interpreterLangs :: proxy i -> [String]
+  type Langs i :: [Symbol]
 
   -- | Get information about an interpreter. This should return
   -- a short string describing e.g. compiler/interpreter/language
@@ -20,7 +29,7 @@ class Interpreter i where
   -- | Create an interpreter context. Commonly, this method
   -- might create a background process according to the
   -- configuration, and store the process' handle in @i@.
-  createInterpreter :: String -> IO i
+  createInterpreter :: Config i -> IO i
   
   -- | Free any resources held by an interpreter context.
   -- Once freed, the interpreter context will no longer be usable.
@@ -35,4 +44,4 @@ class Interpreter i where
                    -> IO (Either String String)
 
 interpreterLangs' :: forall i. Interpreter i => [String]
-interpreterLangs' = interpreterLangs (Proxy @i)
+interpreterLangs' = symbolListVal (Proxy @(Langs i))

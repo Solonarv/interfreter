@@ -18,7 +18,10 @@ data Haskell
     }
 
 instance Interpreter Haskell where
-  interpreterLangs _ = ["hs", "haskell"]
+  type Langs Haskell = '["hs", "haskell"]
+
+  type Config Haskell = String -- for now
+
   interpreterInfo = infoStr
 
   createInterpreter cmd = do

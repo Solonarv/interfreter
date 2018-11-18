@@ -20,6 +20,7 @@ library
   exposed-modules:     Interfreter.Types
                      , Interfreter.Util.Process
                      , Interfreter.Util.Impl
+                     , Interfreter.Util.SymbolList
                      , Interfreter.Impl.Haskell
   -- other-modules:       
   build-depends:       base ^>=4.11
