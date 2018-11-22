@@ -7,6 +7,15 @@ import System.IO.Error
 
 import System.Process.Typed
 
+data Cmd = Cmd !FilePath ![String]
+
+startBackground :: Cmd -> IO (Process Handle Handle Handle)
+startBackground = startBackgroundWith id
+
+startBackgroundWith :: (ProcessConfig Handle Handle Handle -> ProcessConfig i o e)
+                    -> Cmd -> IO (Process i o e)
+startBackgroundWith f (Cmd exe args) = startProcess . f . setCreatePipes $ (proc exe args)
+
 -- | Set all three of a process config's standard in/out/err to @'createPipe'@.
 setCreatePipes :: ProcessConfig i o e -> ProcessConfig Handle Handle Handle
 setCreatePipes = setStdin createPipe . setStdout createPipe . setStderr createPipe
